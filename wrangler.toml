@@ -4,8 +4,12 @@ main = "src/worker.jsx"
 compatibility_date = "2024-07-24"
 compatibility_flags = ["nodejs_compat"]
 
+routes = [
+  { pattern = "zjljw.kdns.fr/*", zone_name = "zjljw.kdns.fr" }
+]
+
 kv_namespaces = [
-  { binding = "SUBLINK_KV", id = "8943789ed0af49659f887fc740d11240" }
+  { binding = "SUBLINK_KV", id = "cc6f361c485b4ee9b28e9b6970f4a9b2" }
 ]
 
 [assets]
