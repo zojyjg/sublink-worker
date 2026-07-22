@@ -84,18 +84,27 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
 
     async expandSourceProxyProviders() {
         const visited = new Set();
+        const visitedUrls = new Set();
         let extractedNodes = 0;
+        const declaredProviders = Object.keys(this.sourceProxyProviders).length;
 
-        // Some Clash subscriptions are only a provider index. Expand up to two
-        // levels so the generated OpenClash YAML contains usable proxy entries.
-        for (let depth = 0; depth < 2; depth += 1) {
+        // Some Clash subscriptions are only a provider index. Expand several
+        // levels so a provider index that points at another index still yields
+        // usable proxy entries. URLs are tracked too, preventing loops.
+        for (let depth = 0; depth < 4; depth += 1) {
             const entries = Object.entries(this.sourceProxyProviders)
                 .filter(([name, provider]) => !visited.has(name) && typeof provider?.url === 'string' && /^https?:\/\//i.test(provider.url));
             if (entries.length === 0) break;
 
             for (const [name, provider] of entries) {
                 visited.add(name);
-                const fetched = await fetchSubscriptionWithFormat(provider.url, this.userAgent);
+                if (visitedUrls.has(provider.url)) continue;
+                visitedUrls.add(provider.url);
+                const fetched = await fetchSubscriptionWithFormat(
+                    provider.url,
+                    this.userAgent,
+                    provider.header || provider.headers
+                );
                 if (!fetched) continue;
 
                 const parsed = parseSubscriptionContent(fetched.content);
@@ -111,9 +120,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             }
         }
 
-        const sourceHadProviders = visited.size > 0;
+        const sourceHadProviders = declaredProviders > 0;
         if (sourceHadProviders && extractedNodes === 0 && (this.config.proxies || []).length === 0) {
-            throw new InvalidConfigError('The subscription only exposes proxy-providers, but no usable nodes could be retrieved from them.');
+            throw new InvalidConfigError('The subscription only exposes proxy-providers, but no usable nodes could be retrieved from them. Check the provider URL or its required request headers.');
         }
     }
 

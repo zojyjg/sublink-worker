@@ -151,11 +151,22 @@ export async function fetchSubscription(url, userAgent) {
  * @param {string} userAgent - Optional User-Agent header
  * @returns {Promise<{content: string, format: 'clash'|'singbox'|'surge'|'unknown', url: string, subscriptionUserinfo?: string}|null>}
  */
-export async function fetchSubscriptionWithFormat(url, userAgent) {
+export async function fetchSubscriptionWithFormat(url, userAgent, requestHeaders = {}) {
     try {
         const headers = new Headers();
         if (userAgent) {
             headers.set('User-Agent', userAgent);
+        }
+        // A Clash proxy-provider can define its own request headers (for
+        // example an endpoint-specific User-Agent or authorization header).
+        // Preserve them while expanding providers server-side, otherwise a
+        // provider that OpenClash itself can read may look empty to SubLink.
+        if (requestHeaders && typeof requestHeaders === 'object') {
+            for (const [name, value] of Object.entries(requestHeaders)) {
+                if (!name || value === undefined || value === null) continue;
+                const normalizedValue = Array.isArray(value) ? value.join(', ') : String(value);
+                headers.set(name, normalizedValue);
+            }
         }
         const response = await fetch(url, {
             method: 'GET',

@@ -1,0 +1,7 @@
+proxies:
+  - name: Provider Smoke Test
+    type: ss
+    server: 127.0.0.1
+    port: 443
+    cipher: aes-128-gcm
+    password: smoke-test-only

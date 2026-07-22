@@ -13,6 +13,16 @@ const plainClashYaml = `proxies:
     password: test123
 `;
 
+const providerIndexYaml = `proxy-providers:
+  secure-provider:
+    type: http
+    url: https://example.com/provider.yaml
+    path: ./providers/secure-provider.yaml
+    header:
+      User-Agent: clash-meta
+proxies: []
+`;
+
 function mockFetchText(text) {
     vi.stubGlobal('fetch', vi.fn(async () => ({
         ok: true,
@@ -98,5 +108,32 @@ describe('Issues #370/#373/#277 - remote subscription decode and empty Clash out
         expect(autoSelect).toBeUndefined();
         expect(nodeSelect.proxies).toEqual(['DIRECT', 'REJECT']);
         expectNoEmptyUrlTestGroup(built);
+    });
+
+    it('expands a provider-only unified subscription with its required headers', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url, options) => {
+            expect(url).toBe('https://example.com/provider.yaml');
+            expect(options.headers.get('User-Agent')).toBe('clash-meta');
+            return {
+                ok: true,
+                status: 200,
+                text: async () => plainClashYaml,
+                headers: { get: () => null }
+            };
+        }));
+
+        const builder = new ClashConfigBuilder(
+            providerIndexYaml,
+            [],
+            [],
+            { 'x-openclash-unified': true },
+            'zh-CN',
+            'OpenClash'
+        );
+        const built = yaml.load(await builder.build());
+
+        expect(built.proxies).toHaveLength(1);
+        expect(built.proxies[0].name).toBe('HK-Plain');
+        expect(built['proxy-groups'].find(group => group.name === '🤖 AI').proxies).toContain('DIRECT');
     });
 });
