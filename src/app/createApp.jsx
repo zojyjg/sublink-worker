@@ -62,7 +62,11 @@ export function createApp(bindings = {}) {
         // a rotated download credential; both values are private Worker
         // secrets and neither is exposed by the endpoint.
         const providedToken = c.req.query('token');
-        if (providedToken !== runtime.config.generatedSubscriptionDownloadToken && providedToken !== runtime.config.generatedSubscriptionSyncToken) return c.text('Unauthorized', 401);
+        if (providedToken !== runtime.config.generatedSubscriptionDownloadToken && providedToken !== runtime.config.generatedSubscriptionSyncToken) {
+            return c.text('Unauthorized', 401, {
+                'X-Generated-Auth-Debug': `${providedToken?.length || 0}:${runtime.config.generatedSubscriptionSyncToken?.length || 0}:${runtime.config.generatedSubscriptionDownloadToken?.length || 0}`
+            });
+        }
 
         const content = await runtime.kv.get(`${GENERATED_SUBSCRIPTION_PREFIX}${name}`);
         if (!content) return c.text('Generated subscription has not been synchronized yet', 404);
