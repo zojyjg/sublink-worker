@@ -67,7 +67,8 @@ const fixedRules = [
 ];
 
 function selector(name, preferred, providerNames = []) {
-    const options = [...regionalNodes, '🔀 节点', 'Fallback', 'Auto'];
+    // DIRECT must remain a selectable exit for services that should bypass the proxy.
+    const options = [...regionalNodes, '🔀 节点', 'Fallback', 'Auto', 'DIRECT'];
     return {
         name,
         type: 'select',
@@ -95,7 +96,7 @@ export function buildUnifiedOpenClashPolicy(config, sourceRules = [], sourceRule
         groups.push({ name: `${name}节点`, type: 'select', proxies: [`${name}自动`], 'include-all': true, filter, ...(providerNames.length > 0 ? { use: providerNames } : {}) });
     }
     groups.push(
-        { name: '🔀 节点', type: 'select', proxies: [...regionalNodes, 'Fallback', 'Auto'], 'include-all': true, ...(providerNames.length > 0 ? { use: providerNames } : {}) },
+        { name: '🔀 节点', type: 'select', proxies: [...regionalNodes, 'Fallback', 'Auto', 'DIRECT'], 'include-all': true, ...(providerNames.length > 0 ? { use: providerNames } : {}) },
         { name: 'Fallback', type: 'fallback', 'include-all': true, url: 'https://www.gstatic.com/generate_204', interval: 300, ...(providerNames.length > 0 ? { use: providerNames } : {}) },
         { name: 'Auto', type: 'url-test', 'include-all': true, url: 'https://www.gstatic.com/generate_204', interval: 300, tolerance: 100, ...(providerNames.length > 0 ? { use: providerNames } : {}) }
     );
