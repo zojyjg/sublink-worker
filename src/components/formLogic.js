@@ -99,7 +99,7 @@ export const formLogicFn = (t) => {
             configSaveFailedText: '',
             configValidationState: '',
             configValidationMessage: '',
-            customUA: '',
+            customUA: 'clash.meta',
             loading: false,
             generatedLinks: null,
             shortenedLinks: null,
@@ -137,7 +137,7 @@ export const formLogicFn = (t) => {
                 this.enableClashUI = localStorage.getItem('enableClashUI') === 'true';
                 this.externalController = localStorage.getItem('externalController') || '';
                 this.externalUiDownloadUrl = localStorage.getItem('externalUiDownloadUrl') || '';
-                this.customUA = localStorage.getItem('userAgent') || '';
+                this.customUA = localStorage.getItem('userAgent') || 'clash.meta';
                 this.configEditor = localStorage.getItem('configEditor') || '';
                 this.configType = localStorage.getItem('configType') || 'singbox';
                 this.customShortCode = localStorage.getItem('customShortCode') || '';
