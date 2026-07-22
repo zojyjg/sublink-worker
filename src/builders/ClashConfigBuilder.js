@@ -8,6 +8,9 @@ import { emitClashRules, sanitizeClashProxyGroups } from './helpers/clashConfigU
 import { normalizeGroupName, findGroupIndexByName } from './helpers/groupNameUtils.js';
 import { InvalidConfigError } from '../services/errors.js';
 import { buildUnifiedOpenClashPolicy } from '../config/unifiedOpenClashPolicy.js';
+import { ProxyParser } from '../parsers/index.js';
+import { fetchSubscriptionWithFormat } from '../parsers/subscription/httpSubscriptionFetcher.js';
+import { parseSubscriptionContent } from '../parsers/subscription/subscriptionContentParser.js';
 
 /**
  * Check if the client supports MRS (Meta Rule Set) format
@@ -65,6 +68,71 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.enableClashUI = enableClashUI;
         this.externalController = externalController;
         this.externalUiDownloadUrl = externalUiDownloadUrl;
+    }
+
+    async build() {
+        if (!this.isUnifiedOpenClash) {
+            return super.build();
+        }
+
+        const customItems = await this.parseCustomItems();
+        this.addCustomItems(customItems);
+        await this.expandSourceProxyProviders();
+        this.addSelectors();
+        return this.formatConfig();
+    }
+
+    async expandSourceProxyProviders() {
+        const visited = new Set();
+        let extractedNodes = 0;
+
+        // Some Clash subscriptions are only a provider index. Expand up to two
+        // levels so the generated OpenClash YAML contains usable proxy entries.
+        for (let depth = 0; depth < 2; depth += 1) {
+            const entries = Object.entries(this.sourceProxyProviders)
+                .filter(([name, provider]) => !visited.has(name) && typeof provider?.url === 'string' && /^https?:\/\//i.test(provider.url));
+            if (entries.length === 0) break;
+
+            for (const [name, provider] of entries) {
+                visited.add(name);
+                const fetched = await fetchSubscriptionWithFormat(provider.url, this.userAgent);
+                if (!fetched) continue;
+
+                const parsed = parseSubscriptionContent(fetched.content);
+                if (parsed && typeof parsed === 'object' && parsed.config) {
+                    this.applyConfigOverrides(parsed.config);
+                }
+                const nodes = await this.extractParsedNodes(parsed);
+                if (nodes.length === 0) continue;
+
+                this.addCustomItems(nodes);
+                extractedNodes += nodes.length;
+                delete this.sourceProxyProviders[name];
+            }
+        }
+
+        const sourceHadProviders = visited.size > 0;
+        if (sourceHadProviders && extractedNodes === 0 && (this.config.proxies || []).length === 0) {
+            throw new InvalidConfigError('The subscription only exposes proxy-providers, but no usable nodes could be retrieved from them.');
+        }
+    }
+
+    async extractParsedNodes(parsed) {
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.proxies)) {
+            return parsed.proxies.filter(proxy => proxy?.tag);
+        }
+        if (!Array.isArray(parsed)) return [];
+
+        const nodes = [];
+        for (const item of parsed) {
+            if (item?.tag) {
+                nodes.push(item);
+            } else if (typeof item === 'string') {
+                const proxy = await ProxyParser.parse(item, this.userAgent);
+                if (proxy?.tag) nodes.push(proxy);
+            }
+        }
+        return nodes;
     }
 
     /**
