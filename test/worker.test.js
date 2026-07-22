@@ -33,6 +33,7 @@ describe('Worker', () => {
             body: config
         })).status).toBe(200);
         expect((await app.request('http://localhost/openclash/flowercloud')).status).toBe(401);
+        expect((await app.request('http://localhost/openclash/flowercloud?token=sync-secret')).status).toBe(200);
 
         const result = await app.request('http://localhost/openclash/flowercloud?token=download-secret');
         expect(result.status).toBe(200);
