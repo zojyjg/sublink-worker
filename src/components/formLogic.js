@@ -452,19 +452,23 @@ export const formLogicFn = (t) => {
                     const origin = window.location.origin;
                     const shortened = {};
 
-                    // Use custom short code if provided, otherwise let backend generate it once
-                    let shortCode = this.customShortCode.trim();
-                    let isFirstRequest = true;
+                    // Each output type needs its own short code. Reusing one code overwrites
+                    // the stored query and can silently drop Clash-only parameters.
+                    const customShortCode = this.customShortCode.trim();
+                    const prefixMap = {
+                        xray: 'x',
+                        singbox: 'b',
+                        clash: 'c',
+                        surge: 's'
+                    };
 
                     // Shorten each link type
                     for (const [type, url] of Object.entries(this.generatedLinks)) {
                         try {
                             let apiUrl = `${origin}/shorten-v2?url=${encodeURIComponent(url)}`;
 
-                            // For the first request, either use custom code or let backend generate
-                            // For subsequent requests, use the code from first request
-                            if (shortCode) {
-                                apiUrl += `&shortCode=${encodeURIComponent(shortCode)}`;
+                            if (customShortCode) {
+                                apiUrl += `&shortCode=${encodeURIComponent(`${customShortCode}-${prefixMap[type]}`)}`;
                             }
 
                             const response = await fetch(apiUrl);
@@ -472,21 +476,6 @@ export const formLogicFn = (t) => {
                                 throw new Error(`Failed to shorten ${type} link`);
                             }
                             const returnedCode = await response.text();
-
-                            // If this is the first request and no custom code was provided,
-                            // use the backend-generated code for all subsequent requests
-                            if (isFirstRequest && !shortCode) {
-                                shortCode = returnedCode;
-                            }
-                            isFirstRequest = false;
-
-                            // Map types to their corresponding path prefixes
-                            const prefixMap = {
-                                xray: 'x',
-                                singbox: 'b',
-                                clash: 'c',
-                                surge: 's'
-                            };
 
                             shortened[type] = `${origin}/${prefixMap[type]}/${returnedCode}`;
                         } catch (error) {
