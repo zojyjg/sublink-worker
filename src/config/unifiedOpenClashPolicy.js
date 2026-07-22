@@ -66,13 +66,14 @@ const fixedRules = [
     ...financeDomains.map(domain => `DOMAIN-SUFFIX,${domain},🇺🇸 美国金融`)
 ];
 
-function selector(name, preferred) {
+function selector(name, preferred, providerNames = []) {
     const options = [...regionalNodes, '🔀 节点', 'Fallback', 'Auto'];
     return {
         name,
         type: 'select',
         proxies: preferred ? [preferred, ...options.filter(item => item !== preferred)] : options,
-        'include-all': true
+        'include-all': true,
+        ...(providerNames.length > 0 ? { use: providerNames } : {})
     };
 }
 
@@ -87,30 +88,33 @@ function remapRule(rule) {
     return fields.join(',');
 }
 
-export function buildUnifiedOpenClashPolicy(config, sourceRules = [], sourceRuleProviders = {}) {
+export function buildUnifiedOpenClashPolicy(config, sourceRules = [], sourceRuleProviders = {}, sourceProxyProviders = {}) {
+    const providerNames = Object.keys(sourceProxyProviders);
     const groups = [];
     for (const [name, filter] of regions) {
-        groups.push({ name: `${name}节点`, type: 'select', proxies: [`${name}自动`], 'include-all': true, filter });
+        groups.push({ name: `${name}节点`, type: 'select', proxies: [`${name}自动`], 'include-all': true, filter, ...(providerNames.length > 0 ? { use: providerNames } : {}) });
     }
     groups.push(
-        { name: '🔀 节点', type: 'select', proxies: [...regionalNodes, 'Fallback', 'Auto'], 'include-all': true },
-        { name: 'Fallback', type: 'fallback', 'include-all': true, url: 'https://www.gstatic.com/generate_204', interval: 300 },
-        { name: 'Auto', type: 'url-test', 'include-all': true, url: 'https://www.gstatic.com/generate_204', interval: 300, tolerance: 100 }
+        { name: '🔀 节点', type: 'select', proxies: [...regionalNodes, 'Fallback', 'Auto'], 'include-all': true, ...(providerNames.length > 0 ? { use: providerNames } : {}) },
+        { name: 'Fallback', type: 'fallback', 'include-all': true, url: 'https://www.gstatic.com/generate_204', interval: 300, ...(providerNames.length > 0 ? { use: providerNames } : {}) },
+        { name: 'Auto', type: 'url-test', 'include-all': true, url: 'https://www.gstatic.com/generate_204', interval: 300, tolerance: 100, ...(providerNames.length > 0 ? { use: providerNames } : {}) }
     );
-    for (const name of serviceGroups) groups.push(selector(name));
+    for (const name of serviceGroups) groups.push(selector(name, undefined, providerNames));
     const googleIndex = groups.findIndex(group => group.name === '🔍 Google');
-    groups.splice(googleIndex + 1, 0, selector('Google AI'));
-    groups.push(selector('💱 Crypto', '🇯🇵 日本节点'));
-    groups.push(selector('🇺🇸 美国金融', '🇺🇸 美国节点'));
-    groups.push(selector('UK-VoWiFi', '🇬🇧 英国节点'));
-    groups.push(selector('Final'));
+    groups.splice(googleIndex + 1, 0, selector('Google AI', undefined, providerNames));
+    groups.push(selector('💱 Crypto', '🇯🇵 日本节点', providerNames));
+    groups.push(selector('🇺🇸 美国金融', '🇺🇸 美国节点', providerNames));
+    groups.push(selector('UK-VoWiFi', '🇬🇧 英国节点', providerNames));
+    groups.push(selector('Final', undefined, providerNames));
     for (const [name, filter] of regions) {
         groups.push({
             name: `${name}自动`, type: 'url-test', 'include-all': true, filter,
-            url: 'https://www.gstatic.com/generate_204', interval: 300, tolerance: 100, 'disable-udp': false
+            url: 'https://www.gstatic.com/generate_204', interval: 300, tolerance: 100, 'disable-udp': false,
+            ...(providerNames.length > 0 ? { use: providerNames } : {})
         });
     }
 
+    if (providerNames.length > 0) config['proxy-providers'] = sourceProxyProviders;
     config['proxy-groups'] = groups;
     config['rule-providers'] = {
         ...sourceRuleProviders,

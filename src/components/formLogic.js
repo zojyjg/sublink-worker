@@ -377,7 +377,7 @@ export const formLogicFn = (t) => {
                     const origin = window.location.origin;
                     const params = new URLSearchParams();
                     const sourceText = this.input.trim();
-                    const isInlineConfig = sourceText.includes('proxies:') || sourceText.startsWith('{');
+                    const isInlineConfig = sourceText.includes('proxies:') || sourceText.includes('proxy-providers:') || sourceText.startsWith('{');
                     if (isInlineConfig) {
                         const sourceResponse = await fetch('/source', {
                             method: 'POST',

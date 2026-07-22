@@ -57,6 +57,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.isUnifiedOpenClash = baseConfig?.['x-openclash-unified'] === true;
         this.sourceRules = [];
         this.sourceRuleProviders = {};
+        this.sourceProxyProviders = {};
         this.selectedRules = selectedRules;
         this.customRules = customRules;
         this.countryGroupNames = [];
@@ -80,6 +81,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             if (Array.isArray(overrides?.rules)) this.sourceRules.push(...overrides.rules);
             if (overrides?.['rule-providers'] && typeof overrides['rule-providers'] === 'object') {
                 Object.assign(this.sourceRuleProviders, deepCopy(overrides['rule-providers']));
+            }
+            if (overrides?.['proxy-providers'] && typeof overrides['proxy-providers'] === 'object') {
+                Object.assign(this.sourceProxyProviders, deepCopy(overrides['proxy-providers']));
             }
             return;
         }
@@ -659,7 +663,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
 
     formatConfig() {
         if (this.isUnifiedOpenClash) {
-            buildUnifiedOpenClashPolicy(this.config, this.sourceRules, this.sourceRuleProviders);
+            buildUnifiedOpenClashPolicy(this.config, this.sourceRules, this.sourceRuleProviders, this.sourceProxyProviders);
             return yaml.dump(this.config);
         }
         const rules = this.generateRules();
