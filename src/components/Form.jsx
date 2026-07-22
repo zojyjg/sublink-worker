@@ -95,6 +95,14 @@ export const Form = (props) => {
         />
       </div>
 
+      <label class="flex items-start gap-4 bg-primary-50 dark:bg-primary-900/20 rounded-2xl border border-primary-200 dark:border-primary-800 p-5 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors">
+        <input type="checkbox" x-model="unifiedOpenClash" class="mt-1 w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600" />
+        <span>
+          <span class="block font-semibold text-gray-900 dark:text-white">统一 OpenClash 策略</span>
+          <span class="block mt-1 text-sm text-gray-600 dark:text-gray-300">为当前订阅生成统一的地区节点、服务策略、Google AI、加密货币、美国金融和 UK-VoWiFi 规则；适用于 OpenClash / Mihomo。</span>
+        </span>
+      </label>
+
       {/* Advanced Options Toggle */}
       <div 
         class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" 

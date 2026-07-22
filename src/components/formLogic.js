@@ -85,6 +85,7 @@ export const formLogicFn = (t) => {
             subconverterCopied: false,
             groupByCountry: false,
             includeAutoSelect: true,
+            unifiedOpenClash: false,
             enableClashUI: false,
             externalController: '',
             externalUiDownloadUrl: '',
@@ -132,6 +133,7 @@ export const formLogicFn = (t) => {
                 this.showAdvanced = localStorage.getItem('advancedToggle') === 'true';
                 this.groupByCountry = localStorage.getItem('groupByCountry') === 'true';
                 this.includeAutoSelect = localStorage.getItem('includeAutoSelect') !== 'false';
+                this.unifiedOpenClash = localStorage.getItem('unifiedOpenClash') === 'true';
                 this.enableClashUI = localStorage.getItem('enableClashUI') === 'true';
                 this.externalController = localStorage.getItem('externalController') || '';
                 this.externalUiDownloadUrl = localStorage.getItem('externalUiDownloadUrl') || '';
@@ -163,6 +165,7 @@ export const formLogicFn = (t) => {
                 this.$watch('showAdvanced', val => localStorage.setItem('advancedToggle', val));
                 this.$watch('groupByCountry', val => localStorage.setItem('groupByCountry', val));
                 this.$watch('includeAutoSelect', val => localStorage.setItem('includeAutoSelect', val));
+                this.$watch('unifiedOpenClash', val => localStorage.setItem('unifiedOpenClash', val));
                 this.$watch('enableClashUI', val => localStorage.setItem('enableClashUI', val));
                 this.$watch('externalController', val => localStorage.setItem('externalController', val));
                 this.$watch('externalUiDownloadUrl', val => localStorage.setItem('externalUiDownloadUrl', val));
@@ -407,11 +410,13 @@ export const formLogicFn = (t) => {
                     }
 
                     const queryString = params.toString();
+                    const clashParams = new URLSearchParams(params);
+                    if (this.unifiedOpenClash) clashParams.append('unified_openclash', 'true');
 
                     this.generatedLinks = {
                         xray: origin + '/xray?' + queryString,
                         singbox: origin + '/singbox?' + queryString,
-                        clash: origin + '/clash?' + queryString,
+                        clash: origin + '/clash?' + clashParams.toString(),
                         surge: origin + '/surge?' + queryString
                     };
 
