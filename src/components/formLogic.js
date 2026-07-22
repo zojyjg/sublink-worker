@@ -373,7 +373,22 @@ export const formLogicFn = (t) => {
                     // Construct URLs
                     const origin = window.location.origin;
                     const params = new URLSearchParams();
-                    params.append('config', this.input);
+                    const sourceText = this.input.trim();
+                    const isInlineConfig = sourceText.includes('proxies:') || sourceText.startsWith('{');
+                    if (isInlineConfig) {
+                        const sourceResponse = await fetch('/source', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: sourceText })
+                        });
+                        const sourceId = (await sourceResponse.text()).trim();
+                        if (!sourceResponse.ok || !sourceId) {
+                            throw new Error('Unable to save source configuration');
+                        }
+                        params.append('sourceConfigId', sourceId);
+                    } else {
+                        params.append('config', this.input);
+                    }
                     params.append('ua', this.customUA);
                     params.append('selectedRules', JSON.stringify(this.selectedRules));
                     params.append('customRules', JSON.stringify(customRules));

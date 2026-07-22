@@ -44,6 +44,30 @@ export class ConfigStorageService {
         return configId;
     }
 
+    async saveSource(content) {
+        if (typeof content !== 'string' || content.trim() === '') {
+            throw new InvalidPayloadError('Source content is required');
+        }
+        const kv = this.ensureKv();
+        const sourceId = `source_${generateWebPath(8)}`;
+        const record = JSON.stringify({ content });
+        const ttlSeconds = this.options.configTtlSeconds;
+        const putOptions = ttlSeconds ? { expirationTtl: ttlSeconds } : undefined;
+        await kv.put(sourceId, record, putOptions);
+        return sourceId;
+    }
+
+    async getSourceById(sourceId) {
+        const stored = await this.ensureKv().get(sourceId);
+        if (!stored) return null;
+        try {
+            const record = JSON.parse(stored);
+            return typeof record?.content === 'string' ? record.content : null;
+        } catch {
+            throw new InvalidPayloadError('Stored source is not valid JSON');
+        }
+    }
+
     serializeConfig(type, content) {
         if (type === 'clash') {
             if (typeof content === 'string' && (content.trim().startsWith('-') || content.includes(':'))) {

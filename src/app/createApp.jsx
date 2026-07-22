@@ -126,7 +126,12 @@ export function createApp(bindings = {}) {
 
     app.get('/clash', async (c) => {
         try {
-            const config = c.req.query('config');
+            let config = c.req.query('config');
+            const sourceConfigId = c.req.query('sourceConfigId');
+            if (sourceConfigId) {
+                const storage = requireConfigStorage(services.configStorage);
+                config = await storage.getSourceById(sourceConfigId);
+            }
             if (!config) {
                 return c.text('Missing config parameter', 400);
             }
@@ -357,6 +362,20 @@ export function createApp(bindings = {}) {
             const storage = requireConfigStorage(services.configStorage);
             const configId = await storage.saveConfig(type, content);
             return c.text(configId);
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                return c.text(`Invalid format: ${error.message}`, 400);
+            }
+            return handleError(c, error, runtime.logger);
+        }
+    });
+
+    app.post('/source', async (c) => {
+        try {
+            const { content } = await c.req.json();
+            const storage = requireConfigStorage(services.configStorage);
+            const sourceId = await storage.saveSource(content);
+            return c.text(sourceId);
         } catch (error) {
             if (error instanceof SyntaxError) {
                 return c.text(`Invalid format: ${error.message}`, 400);
