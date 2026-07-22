@@ -78,6 +78,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         const customItems = await this.parseCustomItems();
         this.addCustomItems(customItems);
         await this.expandSourceProxyProviders();
+        if ((this.config.proxies || []).length === 0) {
+            throw new InvalidConfigError('No usable proxy nodes were found. Use a Clash/Mihomo subscription URL or set the correct subscription user agent.');
+        }
         this.addSelectors();
         return this.formatConfig();
     }
