@@ -20,6 +20,7 @@ import { CLASH_CONFIG, PREDEFINED_RULE_SETS, SING_BOX_CONFIG, SING_BOX_CONFIG_V1
 
 const DEFAULT_USER_AGENT = 'curl/7.74.0';
 const GENERATED_SUBSCRIPTION_PREFIX = 'generated_openclash_subscription:';
+const GENERATED_SUBSCRIPTION_ACCESS_PREFIX = 'generated_openclash_subscription_access:';
 const GENERATED_SUBSCRIPTION_NAMES = new Set(['flowercloud', 'flowercloud-trojan']);
 
 export function createApp(bindings = {}) {
@@ -49,24 +50,21 @@ export function createApp(bindings = {}) {
         if (c.req.header('Authorization') !== `Bearer ${runtime.config.generatedSubscriptionSyncToken}`) return c.text('Unauthorized', 401);
 
         const content = await c.req.text();
+        const downloadToken = c.req.header('X-OpenClash-Download-Token');
         if (!isGeneratedClashConfig(content)) return c.text('Invalid generated Clash configuration', 400);
+        if (!isGeneratedSubscriptionToken(downloadToken)) return c.text('Invalid generated subscription access token', 400);
         await runtime.kv.put(`${GENERATED_SUBSCRIPTION_PREFIX}${name}`, content);
+        await runtime.kv.put(`${GENERATED_SUBSCRIPTION_ACCESS_PREFIX}${name}`, downloadToken);
         return c.json({ ok: true, name, bytes: new TextEncoder().encode(content).byteLength });
     });
 
     app.get('/openclash/:name', async (c) => {
         const name = c.req.param('name');
         if (!GENERATED_SUBSCRIPTION_NAMES.has(name)) return c.text('Unknown generated subscription', 404);
-        if (!runtime.config.generatedSubscriptionDownloadToken || !runtime.kv) return c.text('Generated subscription is unavailable', 503);
-        // The sync credential is accepted temporarily as a recovery path for
-        // a rotated download credential; both values are private Worker
-        // secrets and neither is exposed by the endpoint.
+        if (!runtime.kv) return c.text('Generated subscription is unavailable', 503);
         const providedToken = c.req.query('token');
-        if (providedToken !== runtime.config.generatedSubscriptionDownloadToken && providedToken !== runtime.config.generatedSubscriptionSyncToken) {
-            return c.text('Unauthorized', 401, {
-                'X-Generated-Auth-Debug': `${providedToken?.length || 0}:${runtime.config.generatedSubscriptionSyncToken?.length || 0}:${runtime.config.generatedSubscriptionDownloadToken?.length || 0}`
-            });
-        }
+        const downloadToken = await runtime.kv.get(`${GENERATED_SUBSCRIPTION_ACCESS_PREFIX}${name}`);
+        if (!downloadToken || providedToken !== downloadToken) return c.text('Unauthorized', 401);
 
         const content = await runtime.kv.get(`${GENERATED_SUBSCRIPTION_PREFIX}${name}`);
         if (!content) return c.text('Generated subscription has not been synchronized yet', 404);
@@ -611,6 +609,10 @@ function isGeneratedClashConfig(content) {
     // The generator has already parsed the YAML.  This inexpensive guard
     // prevents an accidental HTML error page from becoming an OpenClash feed.
     return /^proxies:\s*$/m.test(content) && /^proxy-groups:\s*$/m.test(content);
+}
+
+function isGeneratedSubscriptionToken(token) {
+    return typeof token === 'string' && /^[0-9a-f]{32,128}$/i.test(token);
 }
 
 function handleError(c, error, logger) {

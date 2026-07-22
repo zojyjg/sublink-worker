@@ -29,13 +29,12 @@ describe('Worker', () => {
         expect((await app.request('http://localhost/openclash-sync/flowercloud', { method: 'POST', body: config })).status).toBe(401);
         expect((await app.request('http://localhost/openclash-sync/flowercloud', {
             method: 'POST',
-            headers: { Authorization: 'Bearer sync-secret' },
+            headers: { Authorization: 'Bearer sync-secret', 'X-OpenClash-Download-Token': 'a'.repeat(64) },
             body: config
         })).status).toBe(200);
         expect((await app.request('http://localhost/openclash/flowercloud')).status).toBe(401);
-        expect((await app.request('http://localhost/openclash/flowercloud?token=sync-secret')).status).toBe(200);
 
-        const result = await app.request('http://localhost/openclash/flowercloud?token=download-secret');
+        const result = await app.request(`http://localhost/openclash/flowercloud?token=${'a'.repeat(64)}`);
         expect(result.status).toBe(200);
         expect(result.headers.get('content-type')).toContain('text/yaml');
         expect(await result.text()).toBe(config);
