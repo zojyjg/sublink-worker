@@ -136,4 +136,24 @@ describe('Issues #370/#373/#277 - remote subscription decode and empty Clash out
         expect(built.proxies[0].name).toBe('HK-Plain');
         expect(built['proxy-groups'].find(group => group.name === '🤖 AI').proxies).toContain('DIRECT');
     });
+
+    it('rejects a unified subscription when its top-level URL yields no nodes', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => ({
+            ok: false,
+            status: 403,
+            text: async () => 'Forbidden',
+            headers: { get: () => null }
+        })));
+
+        const builder = new ClashConfigBuilder(
+            'https://example.com/blocked-subscription',
+            [],
+            [],
+            { 'x-openclash-unified': true },
+            'zh-CN',
+            'OpenClash'
+        );
+
+        await expect(builder.build()).rejects.toThrow('No usable proxy nodes');
+    });
 });

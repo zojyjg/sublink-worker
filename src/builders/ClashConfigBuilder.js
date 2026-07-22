@@ -78,6 +78,13 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         const customItems = await this.parseCustomItems();
         this.addCustomItems(customItems);
         await this.expandSourceProxyProviders();
+        // A failed top-level HTTP subscription used to fall through to an
+        // otherwise valid policy-only config. Unified OpenClash profiles must
+        // always contain at least one usable proxy; failing fast prevents a
+        // successful-looking YAML with no nodes from reaching OpenClash.
+        if ((this.config.proxies || []).length === 0) {
+            throw new InvalidConfigError('No usable proxy nodes could be retrieved from this subscription. Check the subscription URL, access restrictions, or required request headers.');
+        }
         this.addSelectors();
         return this.formatConfig();
     }
