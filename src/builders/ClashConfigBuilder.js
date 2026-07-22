@@ -7,6 +7,7 @@ import { buildSelectorMembers, buildNodeSelectMembers, buildCustomRuleMembers, u
 import { emitClashRules, sanitizeClashProxyGroups } from './helpers/clashConfigUtils.js';
 import { normalizeGroupName, findGroupIndexByName } from './helpers/groupNameUtils.js';
 import { InvalidConfigError } from '../services/errors.js';
+import { buildUnifiedOpenClashPolicy } from '../config/unifiedOpenClashPolicy.js';
 
 /**
  * Check if the client supports MRS (Meta Rule Set) format
@@ -53,6 +54,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             baseConfig = CLASH_CONFIG;
         }
         super(inputString, baseConfig, lang, userAgent, groupByCountry, includeAutoSelect);
+        this.isUnifiedOpenClash = baseConfig?.['x-openclash-unified'] === true;
+        this.sourceRules = [];
+        this.sourceRuleProviders = {};
         this.selectedRules = selectedRules;
         this.customRules = customRules;
         this.countryGroupNames = [];
@@ -68,7 +72,18 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
      * @returns {boolean} - True if format is Clash YAML
      */
     isCompatibleProviderFormat(format) {
-        return format === 'clash';
+        return !this.isUnifiedOpenClash && format === 'clash';
+    }
+
+    applyConfigOverrides(overrides) {
+        if (this.isUnifiedOpenClash) {
+            if (Array.isArray(overrides?.rules)) this.sourceRules.push(...overrides.rules);
+            if (overrides?.['rule-providers'] && typeof overrides['rule-providers'] === 'object') {
+                Object.assign(this.sourceRuleProviders, deepCopy(overrides['rule-providers']));
+            }
+            return;
+        }
+        super.applyConfigOverrides(overrides);
     }
 
     /**
@@ -643,6 +658,10 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
     }
 
     formatConfig() {
+        if (this.isUnifiedOpenClash) {
+            buildUnifiedOpenClashPolicy(this.config, this.sourceRules, this.sourceRuleProviders);
+            return yaml.dump(this.config);
+        }
         const rules = this.generateRules();
         const useMrs = supportsMrsFormat(this.userAgent);
         const { site_rule_providers, ip_rule_providers } = generateClashRuleSets(this.selectedRules, this.customRules, useMrs);
