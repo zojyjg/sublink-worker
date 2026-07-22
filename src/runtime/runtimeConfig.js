@@ -13,6 +13,8 @@
  * @typedef {Object} RuntimeConfig
  * @property {number} [configTtlSeconds]
  * @property {number} [shortLinkTtlSeconds]
+ * @property {string} [generatedSubscriptionSyncToken]
+ * @property {string} [generatedSubscriptionDownloadToken]
  */
 
 /**
@@ -40,7 +42,9 @@ export function normalizeRuntime(runtime = {}) {
         logger: runtime.logger ?? console,
         config: {
             configTtlSeconds: runtime.config?.configTtlSeconds ?? DEFAULTS.configTtlSeconds,
-            shortLinkTtlSeconds: runtime.config?.shortLinkTtlSeconds ?? null
+            shortLinkTtlSeconds: runtime.config?.shortLinkTtlSeconds ?? null,
+            generatedSubscriptionSyncToken: runtime.config?.generatedSubscriptionSyncToken ?? null,
+            generatedSubscriptionDownloadToken: runtime.config?.generatedSubscriptionDownloadToken ?? null
         }
     };
 }

@@ -17,6 +17,29 @@ const createTestApp = (overrides = {}) => {
 };
 
 describe('Worker', () => {
+    it('stores and serves a generated OpenClash subscription only with its separate tokens', async () => {
+        const app = createTestApp({
+            config: {
+                generatedSubscriptionSyncToken: 'sync-secret',
+                generatedSubscriptionDownloadToken: 'download-secret'
+            }
+        });
+        const config = 'proxies:\n  - name: Test\n    type: ss\nproxy-groups:\n  - name: Final\n    type: select\n    proxies: [Test]\n';
+
+        expect((await app.request('http://localhost/openclash-sync/flowercloud', { method: 'POST', body: config })).status).toBe(401);
+        expect((await app.request('http://localhost/openclash-sync/flowercloud', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer sync-secret' },
+            body: config
+        })).status).toBe(200);
+        expect((await app.request('http://localhost/openclash/flowercloud')).status).toBe(401);
+
+        const result = await app.request('http://localhost/openclash/flowercloud?token=download-secret');
+        expect(result.status).toBe(200);
+        expect(result.headers.get('content-type')).toContain('text/yaml');
+        expect(await result.text()).toBe(config);
+    });
+
     it('GET / returns HTML', async () => {
         const app = createTestApp();
         const res = await app.request('http://localhost/');

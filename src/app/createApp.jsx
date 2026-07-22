@@ -19,6 +19,8 @@ import { normalizeRuntime } from '../runtime/runtimeConfig.js';
 import { CLASH_CONFIG, PREDEFINED_RULE_SETS, SING_BOX_CONFIG, SING_BOX_CONFIG_V1_11, generateSubconverterConfig } from '../config/index.js';
 
 const DEFAULT_USER_AGENT = 'curl/7.74.0';
+const GENERATED_SUBSCRIPTION_PREFIX = 'generated_openclash_subscription:';
+const GENERATED_SUBSCRIPTION_NAMES = new Set(['flowercloud', 'flowercloud-trojan']);
 
 export function createApp(bindings = {}) {
     const runtime = normalizeRuntime(bindings);
@@ -35,6 +37,32 @@ export function createApp(bindings = {}) {
         c.set('lang', lang);
         c.set('t', createTranslator(lang));
         await next();
+    });
+
+    // Generated profiles are produced outside Cloudflare because a few
+    // subscription vendors reject Cloudflare egress.  The worker only stores
+    // and serves already-validated YAML, keeping vendor URLs out of clients.
+    app.post('/openclash-sync/:name', async (c) => {
+        const name = c.req.param('name');
+        if (!GENERATED_SUBSCRIPTION_NAMES.has(name)) return c.text('Unknown generated subscription', 404);
+        if (!runtime.config.generatedSubscriptionSyncToken || !runtime.kv) return c.text('Generated subscription sync is unavailable', 503);
+        if (c.req.header('Authorization') !== `Bearer ${runtime.config.generatedSubscriptionSyncToken}`) return c.text('Unauthorized', 401);
+
+        const content = await c.req.text();
+        if (!isGeneratedClashConfig(content)) return c.text('Invalid generated Clash configuration', 400);
+        await runtime.kv.put(`${GENERATED_SUBSCRIPTION_PREFIX}${name}`, content);
+        return c.json({ ok: true, name, bytes: new TextEncoder().encode(content).byteLength });
+    });
+
+    app.get('/openclash/:name', async (c) => {
+        const name = c.req.param('name');
+        if (!GENERATED_SUBSCRIPTION_NAMES.has(name)) return c.text('Unknown generated subscription', 404);
+        if (!runtime.config.generatedSubscriptionDownloadToken || !runtime.kv) return c.text('Generated subscription is unavailable', 503);
+        if (c.req.query('token') !== runtime.config.generatedSubscriptionDownloadToken) return c.text('Unauthorized', 401);
+
+        const content = await runtime.kv.get(`${GENERATED_SUBSCRIPTION_PREFIX}${name}`);
+        if (!content) return c.text('Generated subscription has not been synchronized yet', 404);
+        return c.text(content, 200, { 'Content-Type': 'text/yaml; charset=utf-8', 'Cache-Control': 'no-store' });
     });
 
     app.get('/', (c) => {
@@ -566,6 +594,15 @@ function requireConfigStorage(service) {
         throw new MissingDependencyError('Config storage functionality is unavailable');
     }
     return service;
+}
+
+function isGeneratedClashConfig(content) {
+    if (typeof content !== 'string' || content.length === 0 || content.length > 20 * 1024 * 1024) {
+        return false;
+    }
+    // The generator has already parsed the YAML.  This inexpensive guard
+    // prevents an accidental HTML error page from becoming an OpenClash feed.
+    return /^proxies:\s*$/m.test(content) && /^proxy-groups:\s*$/m.test(content);
 }
 
 function handleError(c, error, logger) {
