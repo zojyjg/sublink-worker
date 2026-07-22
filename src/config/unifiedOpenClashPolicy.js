@@ -14,7 +14,7 @@ const regions = [
 const regionalNodes = regions.map(([name]) => `${name}节点`);
 const serviceGroups = [
     '🤖 AI', '🍎 Apple', '🖥 Microsoft', '💳 Paypal', '📽️ Bilibili',
-    '👙 TikTok', '🎮 Steam', '🔍 Google', '📢 Facebook', '📢 Discord',
+    '👙 TikTok', '🎮 Steam', '🔍 Google', '🎵 Spotify', '📢 Facebook', '📢 Discord',
     '📢 Telegram', '📢 Whatsapp', '📢 Line', '📢 Linkedin', '📢 Reddit',
     '♥ Instagram', '♥ Twitter', '📽️ Netflix', '📽️ Disney', '📽️ PrimeVideo',
     '📽 Twitch', '📽️ HBO', '📽 Abema', '📽️ Bahamut', '📽 BBC', '📽 DAZN'
